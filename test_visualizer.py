@@ -1,50 +1,64 @@
 import pytest
-
+from unittest.mock import patch, MagicMock
+import os
 from visualizer import *
 
+@patch('requests.get')
+@patch('gzip.open')
+@patch('builtins.open')
+def test_download_and_extract_packages(mock_open, mock_gzip, mock_requests):
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.iter_content = MagicMock(return_value=[b'fake data'])
+    mock_requests.return_value = mock_response
 
-@pytest.mark.parametrize("input, expected", [
-    ("lib1(>=1.0)", "lib1"),
-    ("lib2<=2.0", "lib2"),
-    ("package_name", "package_name"),
-    ("example_package(=1.5)", "example_package")
-])
-def test_trim_package(input, expected):
-    assert trim_package(input) == expected
+    mock_file = MagicMock()
+    mock_open.return_value = mock_file
+    mock_gzip.return_value = MagicMock(read=MagicMock(return_value=b'fake decompressed data'))
 
+    repo_url = "http://archive.ubuntu.com/ubuntu/dists/focal/main/binary-amd64"
+    output_file = "Packages.gz"
+    
+    extracted_file = download_and_extract_packages(repo_url, output_file)
+    
+    mock_requests.assert_called_once_with(f"{repo_url}/Packages.gz", stream=True)
+    mock_open.assert_called_with('Packages', 'wb')  
+    mock_gzip.assert_called_once()  
+    assert extracted_file == "Packages"  
 
-@pytest.mark.parametrize("dependency_text, expected", [
-    ("lib1,lib2", ["lib1", "lib2"]),
-])
-def test_extract_dependencies(dependency_text, expected):
-    assert extract_dependencies(dependency_text) == expected
+def test_parse_packages_file():
+    packages_file = "Packages"
+    with open(packages_file, 'w', encoding='utf-8') as f:
+        f.write("Package: lib1\nDepends: lib2, lib3\n\n")
+        f.write("Package: lib2\nDepends: lib4\n\n")
+    
+    packages = parse_packages_file(packages_file)
+    
+    assert packages == {
+        "lib1": ["lib2", "lib3"],
+        "lib2": ["lib4"]
+    }
+    
+    os.remove(packages_file)
 
-
-@pytest.mark.parametrize("pack_desc, expected", [
-    ('''
-    Standards-Version: 3.9.1
-Build-Depends: debhelper (>= 7.0.50)
-Checksums-Sha1: 
- 3f3603302c524e2ce1462c282e0033a5d2e644f2 86877 nanoblogger_3.4.2.orig.tar.gz
- 5398b16b7693a545474c5f8c0e82e085148310e3 6890 nanoblogger_3.4.2-3.debian.tar.gz
-    ''', "debhelper(>=7.0.50)"),
-    ('''
-    Vcs-Git: https://anonscm.debian.org/git/pkg-security/backdoor-factory.git
-Testsuite: autopkgtest
-Testsuite-Triggers: openssh-client
-Build-Depends-Indep: go-md2man, dh-python, pkg-config, curl, debhelper (>= 10), python (>= 2.7)''',
-     "go-md2man,dh-python,pkg-config,curl,debhelper(>=10),python(>=2.7)")
-])
-def test_get_dependency_text(pack_desc, expected):
-    assert get_dependency_text(pack_desc) == expected
-
-
-@pytest.mark.parametrize("repo, package, package_dict, depth, max_depth, expected", [
-    ("http://archive.ubuntu.com/ubuntu/ubuntu/pool/universe/", "obsession", {}, 0, None,
-     ['debhelper(>=9)', 'libglib2.0-dev', 'libdbus-1-dev', 'libx11-dev', 'libgtk2.0-dev', 'valac']),
-    ("http://archive.ubuntu.com/ubuntu/ubuntu/pool/universe/", "obsession", {}, 0, 1, 
-     ['debhelper(>=9)', 'libglib2.0-dev', 'libdbus-1-dev', 'libx11-dev', 'libgtk2.0-dev', 'valac']),
-])
-def test_get_dependencies(repo, package, package_dict, depth, max_depth, expected):
-    assert get_dependencies(repo, package, package_dict, depth, max_depth) == expected
-
+def test_get_dependencies():
+    packages = {
+        "lib1": ["lib2", "lib3"],
+        "lib2": ["lib4"],
+        "lib3": [],
+        "lib4": ["lib5"]
+    }
+    package_dict = {}
+    repo = "http://archive.ubuntu.com/ubuntu/dists/focal/main"
+    package = "lib1"
+    
+    dependencies = get_dependencies(package, packages, package_dict, depth=0, max_depth=None)
+    
+    assert dependencies == ["lib2", "lib3"]
+    
+    assert package_dict == {
+        "lib1": ["lib2", "lib3"],
+        "lib2": ["lib4"],
+        "lib3": [],
+        "lib4": ["lib5"]
+    }
