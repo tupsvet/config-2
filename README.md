@@ -48,7 +48,7 @@ python visualizer.py --path <путь_к_mermaid_CLI> --package <имя_паке
 
 Пример:  
 ```bash
-python visualizer.py --path ./mmdc --package obsession --repo http://archive.ubuntu.com/ubuntu/pool/universe/ --output obsession_graph.svg --max-depth 2
+python visualizer.py --path "D:\node.exe" --package python3-wadllib --repo http://archive.ubuntu.com/ubuntu/dists/noble/main/binary-amd64
 ```
 ---
 ## Формат данных

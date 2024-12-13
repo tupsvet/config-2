@@ -1,0 +1,11 @@
+flowchart TD;
+	id0["python3-wadllib"] --> id1["python3-importlib-metadata | python3-supported-min (>> 3.8)"];
+	id0["python3-wadllib"] --> id2["python3-lazr.uri"];
+	id0["python3-wadllib"] --> id3["python3-pkg-resources"];
+	id0["python3-wadllib"] --> id4["python3"];
+	id2["python3-lazr.uri"] --> id5["python3-importlib-metadata | python3 (>> 3.8)"];
+	id2["python3-lazr.uri"] --> id3["python3-pkg-resources"];
+	id2["python3-lazr.uri"] --> id4["python3"];
+	id3["python3-pkg-resources"] --> id4["python3"];
+	id4["python3"] --> id6["python3.12 (>= 3.12.3-0~)"];
+	id4["python3"] --> id7["libpython3-stdlib (= 3.12.3-0ubuntu1)"];
